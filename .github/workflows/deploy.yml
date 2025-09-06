@@ -1,0 +1,63 @@
+name: Deploy TypeScript Servers
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # HTTP server
+      - name: Install HTTP server deps
+        run: npm install
+        working-directory: apps/http-server
+
+      - name: Build HTTP server
+        run: npm run build
+        working-directory: apps/http-server
+
+      # WS server
+      - name: Install WS server deps
+        run: npm install
+        working-directory: apps/ws-server
+
+      - name: Build WS server
+        run: npm run build
+        working-directory: apps/ws-server
+
+      # Copy HTTP server to VM
+      - name: Copy HTTP server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "apps/http-server/*"
+          target: "~/cicd/apps/http-server/"
+
+      # Copy WS server to VM
+      - name: Copy WS server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "apps/ws-server/*"
+          target: "~/cicd/apps/ws-server/"
+
+      # Restart PM2 servers
+      - name: Restart PM2 servers
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd ~/cicd/apps/http-server && pm2 restart http-server || pm2 start npm --name http-server -- start
+            cd ~/cicd/apps/ws-server && pm2 restart ws-server || pm2 start npm --name ws-server -- start
