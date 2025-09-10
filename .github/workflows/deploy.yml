@@ -40,6 +40,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: "apps/http-server/*"
           target: "~/cicd/server_deploy/apps/http-server/"
+          overwrite: true
 
       # Copy WS server to VM
       - name: Copy WS server
@@ -50,6 +51,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: "apps/ws-server/*"
           target: "~/cicd/server_deploy/apps/ws-server/"
+          overwrite: true
 
       # Restart PM2 servers
       - name: Restart PM2 servers
