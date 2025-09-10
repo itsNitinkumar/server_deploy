@@ -31,35 +31,33 @@ jobs:
         run: npm run build
         working-directory: apps/ws-server
 
-      # Copy HTTP server to VM
-      - name: Copy HTTP server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: "apps/http-server/*"
-          target: "~/cicd/server_deploy/apps/http-server/"
-          overwrite: true
+      # Setup SSH key
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/vm_key
+          chmod 600 ~/.ssh/vm_key
 
-      # Copy WS server to VM
+      # Copy HTTP server to VM using rsync
+      - name: Copy HTTP server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/vm_key -o StrictHostKeyChecking=no" \
+            apps/http-server/ \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/cicd/server_deploy/apps/http-server/
+
+      # Copy WS server to VM using rsync
       - name: Copy WS server
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: "apps/ws-server/*"
-          target: "~/cicd/server_deploy/apps/ws-server/"
-          overwrite: true
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/vm_key -o StrictHostKeyChecking=no" \
+            apps/ws-server/ \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/cicd/server_deploy/apps/ws-server/
 
       # Restart PM2 servers
       - name: Restart PM2 servers
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            cd ~/cicd/server_deploy/apps/http-server && pm2 restart http-server || pm2 start npm --name http-server -- start
-            cd ~/cicd/server_deploy/apps/ws-server && pm2 restart ws-server || pm2 start npm --name ws-server -- start
+        run: |
+          ssh -i ~/.ssh/vm_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+            "cd ~/cicd/server_deploy/apps/http-server && pm2 restart http-server || pm2 start npm --name http-server -- start && \
+             cd ~/cicd/server_deploy/apps/ws-server && pm2 restart ws-server || pm2 start npm --name ws-server -- start"
