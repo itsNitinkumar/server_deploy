@@ -4,7 +4,7 @@ const wss = new WebSocketServer({ port: 3001 });
 
 wss.on("connection", (ws) => {
   console.log("Client connected");
-  ws.send("Welcome to WS server (TypeScript)!");
+  ws.send("Welcome to WS server (TypeScript)!  ,,, mesaage changed to see if cicd  works");
 
   ws.on("message", (msg) => {
     console.log("Received:", msg.toString());
